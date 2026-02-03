@@ -1,0 +1,215 @@
+// Comprehensive test schema for snapgen
+// Includes: 1:N, N:1, 1:1, self-referencing, enums, JSON, UUIDs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// Users table
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  username      String    @unique
+  firstName     String
+  lastName      String
+  role          UserRole  @default(USER)
+  bio           String?
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  posts         Post[]
+  comments      Comment[]
+  profile       Profile?
+  orders        Order[]
+
+  // Self-referencing: user referrals
+  referredBy    User?     @relation("UserReferrals", fields: [referredById], references: [id])
+  referredById  Int?
+  referrals     User[]    @relation("UserReferrals")
+}
+
+// One-to-one: User Profile
+model Profile {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  zipCode     String?
+  website     String?
+  birthday    DateTime?
+  preferences Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Categories for posts (self-referencing)
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+
+  // Self-referencing: parent category
+  parentId    Int?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+
+  posts       Post[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// Posts with author and category
+model Post {
+  id          Int        @id @default(autoincrement())
+  title       String
+  slug        String     @unique
+  content     String
+  excerpt     String?
+  status      PostStatus @default(DRAFT)
+  viewCount   Int        @default(0)
+
+  authorId    Int
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  categoryId  Int
+  category    Category   @relation(fields: [categoryId], references: [id])
+
+  tags        Tag[]
+  comments    Comment[]
+
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([authorId])
+  @@index([categoryId])
+}
+
+// Tags (many-to-many with Posts)
+model Tag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+
+  posts       Post[]
+
+  createdAt   DateTime @default(now())
+}
+
+// Comments on posts
+model Comment {
+  id          Int      @id @default(autoincrement())
+  content     String
+
+  postId      Int
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorId    Int
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Self-referencing: replies to comments
+  parentId    Int?
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+// E-commerce: Orders
+model Order {
+  id            Int         @id @default(autoincrement())
+  orderNumber   String      @unique
+  status        OrderStatus @default(PENDING)
+  totalAmount   Decimal     @db.Decimal(10, 2)
+
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id])
+
+  items         OrderItem[]
+
+  shippingAddress Json?
+  notes         String?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+// Order items (junction table with additional data)
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+
+  orderId     Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId   Int
+  product     Product @relation(fields: [productId], references: [id])
+
+  quantity    Int
+  price       Decimal @db.Decimal(10, 2)
+
+  @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([productId])
+}
+
+// Products
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  stockQty    Int         @default(0)
+  sku         String      @unique
+  isActive    Boolean     @default(true)
+  images      Json?
+
+  orderItems  OrderItem[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([slug])
+}

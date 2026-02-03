@@ -1,0 +1,45 @@
+import { SnapgenConfig } from './src/types/schema';
+
+export default {
+  // Path to your Prisma or Drizzle schema
+  schema: './examples/prisma/schema.prisma',
+
+  // Database connection (optional, can use DATABASE_URL env var)
+  databaseUrl: process.env.DATABASE_URL,
+
+  // AI configuration - Using OpenRouter
+  ai: {
+    provider: 'openrouter' as const,
+    model: 'openai/gpt-4o-mini', // OpenRouter model format
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    maxRetries: 3,
+    timeout: 30000,
+  },
+
+  // Default generation settings
+  defaults: {
+    count: 10,        // Rows per table (start small for testing)
+    parallel: 3,      // Concurrent AI requests
+    batchSize: 500,   // Insert batch size
+  },
+
+  // Table-specific overrides
+  tables: {
+    User: {
+      count: 5,
+      aiPrompt: 'Generate diverse users from different countries and backgrounds',
+    },
+    Post: {
+      count: 20,
+      aiPrompt: 'Generate blog posts about technology, programming, and AI',
+    },
+    Product: {
+      count: 15,
+      aiPrompt: 'Generate realistic e-commerce products with prices between $10-$500',
+    },
+    // Tag: {
+    //   skip: true,  // Skip this table
+    // },
+  },
+} satisfies SnapgenConfig;
