@@ -305,13 +305,18 @@ Handled by inserting with nullable FK first, ensuring no circular dependencies.
 ## Performance
 
 - **GPT-4o-mini**: Fast and cost-effective (~$0.15 per 1M tokens)
-- **Batch generation**: 10-50 rows per API call
-- **Parallel requests**: Configurable concurrency (default: 5)
+- **Batch generation**: 20-30 rows per API call
+- **Parallel processing**: Multiple tables per dependency level
+- **Automatic batching**: Large tables split into smaller batches
 - **Batch inserts**: 500 rows per query (configurable)
 
-**Estimated times:**
-- 10 tables × 100 rows = ~30 seconds
-- 20 tables × 1000 rows = ~5 minutes
+**Real-world test results:**
+- **630 rows** across **9 tables** in **292 seconds** (~4.9 minutes)
+- **3 dependency levels** with parallel processing
+- **Automatic error recovery** with retry mechanism
+- Tables processed: User (50), Category (30), Tag (50), Product (100), Profile (50), Order (50), Post (200), OrderItem (50), Comment (50)
+
+See [PERFORMANCE_TEST_RESULTS.md](PERFORMANCE_TEST_RESULTS.md) for detailed metrics.
 
 ## Troubleshooting
 
